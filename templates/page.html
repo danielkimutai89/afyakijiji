@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Afya Kijiji — Health Village</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,900&family=Karla:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body class="page-{{ page }}">
+  <header class="topbar">
+    <a class="brand" href="{{ url_for('main.index') }}">
+      <span class="brand-title">Afya Kijiji</span>
+      <span class="brand-sub">Health Village</span>
+    </a>
+    <nav>
+      <a href="{{ url_for('main.index') }}" class="{{ 'current' if page == 'index' else '' }}">Home</a>
+      <a href="{{ url_for('main.index') }}#houses-grid" class="{{ 'current' if page == 'topic_detail' else '' }}">All houses</a>
+      <a href="{{ url_for('programs.index') }}" class="{{ 'current' if page in ['programs','program_detail'] else '' }}">Programs</a>
+      <a href="{{ url_for('symptoms.flow') }}" class="{{ 'current' if page == 'symptoms' else '' }}">Symptom Checker</a>
+      <a href="{{ url_for('facilities.list_facilities') }}" class="{{ 'current' if page == 'facilities' else '' }}">Facilities</a>
+      <a href="{{ url_for('main.emergency') }}" class="{{ 'current' if page == 'emergency' else '' }}">Emergency</a>
+      <a href="{{ url_for('main.about') }}" class="{{ 'current' if page == 'about' else '' }}">About</a>
+      {% if current_user.is_authenticated %}
+        <a href="{{ url_for('programs.my_path') }}" class="{{ 'current' if page == 'my_path' else '' }}">My Path</a>
+        {% if current_user.role in ['chv', 'admin'] %}
+          <a href="{{ url_for('chv.home') }}" class="{{ 'current' if page in ['chv_home','chv_resource'] else '' }}">CHV Portal</a>
+        {% endif %}
+        <a href="{{ url_for('auth.logout') }}">Log out</a>
+      {% else %}
+        <a href="{{ url_for('auth.login') }}" class="{{ 'current' if page == 'login' else '' }}">Log in</a>
+      {% endif %}
+      <span class="lang-links">
+        <a href="{{ url_for('main.index', lang='en') }}">EN</a> ·
+        <a href="{{ url_for('main.index', lang='sw') }}">SW</a>
+      </span>
+      <span class="text-size-control" role="group" aria-label="Text size">
+        <button type="button" class="text-size-btn active" data-scale="100%">A</button>
+        <button type="button" class="text-size-btn" data-scale="112%">A+</button>
+        <button type="button" class="text-size-btn" data-scale="125%">A++</button>
+      </span>
+    </nav>
+    
+  </header>
+  <div class="village-trim" aria-hidden="true"></div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-wrap">
+        {% for category, message in messages %}
+          <div class="flash flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <main>
+
+    {% if page == 'index' %}
+      <section class="hero">
+
+        <span class="eyebrow">Karibu — a health village, built for Kenya</span>
+        <h2>One home for the health questions you search at midnight</h2>
+        <p>Afya Kijiji gathers plain-language guidance on the conditions Kenyan families manage every day — what they are, how to live well with them at home, and exactly when to stop waiting and get care. No login, no jargon.</p>
+        <div class="hero-actions">
+          <a class="btn-primary" href="#houses-grid">Browse the houses</a>
+          <a class="btn-secondary" href="{{ url_for('main.emergency') }}">Emergency signs</a>
+        </div>
+    
+        <div class="village-illustration" aria-hidden="true">
+          <div class="vh vh-tower"></div>
+          <div class="vh" style="--w:64px; --h:66px;"></div>
+          <div class="vh" style="--w:80px; --h:96px;"></div>
+          <div class="vh" style="--w:54px; --h:52px;"></div>
+          <div class="vh" style="--w:76px; --h:86px;"></div>
+          <div class="vh" style="--w:58px; --h:60px;"></div>
+          <div class="vh-sun"></div>
+        </div>
+      </section>
+      <section id="houses-grid">
+        <div class="section-title-row"><h2 style="font-size:1.5rem;">The houses</h2></div>
+        <p style="color:#000; font-weight:600; max-width:64ch; margin:-12px 0 20px;">Each house covers one condition the same way: what it is, daily self-care, warning signs, and where to get help nearby. Sixteen houses, grouped into three neighbourhoods.</p>
+        <div class="search-bar">
+          <span class="search-icon" aria-hidden="true">🔍</span>
+          <input type="search" id="house-search" placeholder='Tafuta nyumba — search by condition, e.g. "diabetes"' aria-label="Search houses by condition">
+        </div>
+        {% if not pages %}
+          <p class="empty-state">No content yet for this language. Run <code>python seed.py</code> to load the sample houses.</p>
+        {% endif %}
+        <p id="search-empty" class="empty-state" hidden>No houses match that search.</p>
+        {% for n in neighbourhoods %}
+          {% if n.pages %}
+          <div class="neighbourhood-block" style="--cat-color: {{ n.color }};">
+            <div class="neighbourhood-head">
+              <span class="neighbourhood-icon">{{ n.icon }}</span>
+              <div>
+                <h3>{{ n.name }} <span class="neighbourhood-sw">{{ n.name_sw }}</span></h3>
+                <p>{{ n.blurb }}</p>
+              </div>
+            </div>
+            <div class="grid">
+              {% for content_page in n.pages %}
+              <a class="card" href="{{ url_for('main.topic_detail', slug=content_page.slug) }}" data-search="{{ (content_page.title ~ ' ' ~ (content_page.title_sw or '')) | lower }}">
+                {% if content_page.title_sw %}<span class="card-sw">{{ content_page.title_sw }}</span>{% endif %}
+                <h3>{{ content_page.title }}</h3>
+                <p>{{ content_page.body.split('\n\n')[0] }}</p>
+                <span class="go">Visit this house →</span>
+              </a>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+        {% endfor %}
+      </section>
+
+      {% if practical_pages %}
+      <section id="practical-grid" style="--cat-color: {{ CATEGORY_COLORS.get('practical', DEFAULT_COLOR) }};">
+        <div class="section-title-row"><h2 style="font-size:1.3rem;">Practical guides</h2></div>
+        <p style="color:#000; font-weight:600; max-width:64ch; margin:-12px 0 20px;">Supporting how-tos that don't belong to a single condition — nutrition, hygiene, vaccination, and knowing when to act.</p>
+        <div class="grid">
+          {% for content_page in practical_pages %}
+          <a class="card" href="{{ url_for('main.topic_detail', slug=content_page.slug) }}" data-search="{{ (content_page.title ~ ' ' ~ (content_page.title_sw or '')) | lower }}">
+            {% if content_page.title_sw %}<span class="card-sw">{{ content_page.title_sw }}</span>{% endif %}
+            <h3>{{ content_page.title }}</h3>
+            <p>{{ content_page.body.split('\n\n')[0] }}</p>
+            <span class="go">Read →</span>
+          </a>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+
+    {% elif page == 'topic_detail' %}
+      {% set parts = content_page.body.split('\n\n') %}
+      {% set neigh = NEIGHBOURHOODS | selectattr('key', 'equalto', content_page.category) | list %}
+      <a class="back-link" href="{{ url_for('main.index', lang=content_page.language) }}">← Back to all houses</a>
+      <article class="detail-article" style="--cat-color: {{ CATEGORY_COLORS.get(content_page.category, DEFAULT_COLOR) }};">
+        <div class="detail-head">
+          <span class="detail-icon">{{ CATEGORY_ICONS.get(content_page.category, DEFAULT_ICON) }}</span>
+          <div>
+            <span class="tag">{{ neigh[0].name if neigh else 'Practical guide' }}</span>
+            <h2>{{ content_page.title }}</h2>
+            {% if content_page.title_sw %}<span class="card-sw">{{ content_page.title_sw }}</span>{% endif %}
+          </div>
+        </div>
+        <p class="lede-text">{{ parts[0] }}</p>
+        {% for para in parts[1:] %}
+          {% if para.startswith('SEEK HELP:') %}
+            <div class="seek-help">
+              <h3>⚠️ Seek help right away if:</h3>
+              <ul>
+                {% for line in para.split('\n')[1:] %}
+                  {% if line.strip() %}<li>{{ line.lstrip('- ').strip() }}</li>{% endif %}
+                {% endfor %}
+              </ul>
+            </div>
+          {% else %}
+            <div class="detail-section">
+              <h3>Key points</h3>
+              <ul>
+                {% for line in para.split('\n') %}
+                  {% if line.strip() %}<li>{{ line.lstrip('- ').strip() }}</li>{% endif %}
+                {% endfor %}
+              </ul>
+            </div>
+          {% endif %}
+        {% endfor %}
+        <div class="related-links">
+          {% if triage_node %}
+            <a class="btn-secondary" href="{{ url_for('symptoms.flow', node=triage_node) }}">Check your symptoms →</a>
+          {% endif %}
+          {% if matching_program %}
+            <a class="btn-secondary" href="{{ url_for('programs.detail', slug=matching_program.slug) }}">Start the guided program →</a>
+          {% endif %}
+        </div>
+      </article>
+
+    {% elif page == 'emergency' %}
+      <span class="eyebrow">Do not wait — act now</span>
+      <h2 class="emergency-hero-heading" style="font-size:1.7rem;">Emergency</h2>
+      <div class="emergency-banner">
+        <h2>If you see any of these, go to a facility now</h2>
+        <p>Do not wait to see if symptoms improve. Go to the nearest health facility, or call one of the national numbers below.</p>
+      </div>
+
+      <div class="numbers-panel">
+        <h2 style="font-size:1.5rem;">Kenya-wide emergency &amp; helpline numbers</h2>
+        <p>Save these. They're free to call and staffed year-round. Tap a number on your phone to dial it directly.</p>
+        <div class="numbers-list">
+          {% for n in national_numbers %}
+            <div class="number-row">
+              <div class="number-row-label">
+                <strong>{{ n.label }}</strong>
+                <p>{{ n.note }}</p>
+              </div>
+              <a class="number-row-dial" href="tel:{{ n.tel }}">Dial <span class="num">{{ n.number }}</span></a>
+            </div>
+          {% endfor %}
+        </div>
+        <p class="numbers-caveat">Gathered from public sources and each service's own listings — services and numbers can change. If one of these is out of date, it's worth double-checking with the Ministry of Health.</p>
+      </div>
+
+      <div class="section-title-row" style="margin-top:38px;"><h2 style="font-size:1.2rem;">Warning signs by condition</h2></div>
+      <div class="redflag-groups">
+        {% for g in groups %}
+          <div class="redflag-group" style="--cat-color: {{ CATEGORY_COLORS.get(g.content_page.category, DEFAULT_COLOR) }};">
+            <h3>{{ CATEGORY_ICONS.get(g.content_page.category, DEFAULT_ICON) }} {{ g.content_page.title }}</h3>
+            <ul>{% for s in g.signs %}<li>{{ s }}</li>{% endfor %}</ul>
+          </div>
+        {% endfor %}
+      </div>
+
+    {% elif page == 'symptoms' %}
+      <div class="flow">
+        <span class="eyebrow">Symptom Checker</span>
+        <h2>What is the main problem?</h2>
+        <p class="question">{{ data.question }}</p>
+        <div class="options">
+          {% for opt in data.options %}
+            {% if opt.next %}
+              <a class="btn-option" href="{{ url_for('symptoms.flow', node=opt.next) }}">{{ opt.label }}</a>
+            {% else %}
+              <div class="advice-box">
+                <p class="advice-label">{{ opt.label }}</p>
+                <p class="advice-text">{{ opt.advice }}</p>
+              </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+        {% if node != 'start' %}
+          <p style="margin-top:20px;"><a class="btn-secondary" href="{{ url_for('symptoms.flow') }}">Start over</a></p>
+        {% endif %}
+      </div>
+
+    {% elif page == 'facilities' %}
+      <div class="facilities">
+        <span class="eyebrow">The village directory</span>
+        <h2>Find a Facility</h2>
+        <p style="color:#000; font-weight:600; font-size:0.9rem;">Kenya's facilities run Level 1 (community) to Level 6 (national referral) — higher levels handle more complex care. Sample data — replace with your local listing.</p>
+        <form method="GET" class="facility-search">
+          <select name="county">
+            <option value="">All counties</option>
+            {% for c in counties %}
+              <option value="{{ c }}" {% if c == selected_county %}selected{% endif %}>{{ c }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="btn-primary">Search</button>
+        </form>
+        {% if facilities %}
+          <ul class="facility-list">
+            {% for f in facilities %}
+              <li class="card facility-card {{ 'national' if f.is_national_referral else '' }}">
+                <span class="tier">{{ f.level }}</span>
+                <h3>{{ f.name }}</h3>
+                <p>{{ f.ward }}, {{ f.county }} County{% if f.phone %} — {{ f.phone }}{% endif %}</p>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="empty-state">No facilities found{% if selected_county %} in {{ selected_county }}{% endif %}.</p>
+        {% endif %}
+      </div>
+
+    {% elif page == 'login' %}
+      <div class="auth-wrap">
+        <span class="eyebrow">Welcome back</span>
+        <h2>Log In</h2>
+        {% if error %}<div class="flash flash-error">{{ error }}</div>{% endif %}
+        <form method="POST" class="auth-form">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" required>
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" required>
+          <button type="submit" class="btn-primary">Log In</button>
+        </form>
+        <p class="hint">Demo account (after seed.py): demo@afyakijiji.ke / afyakijiji123</p>
+        <p class="auth-switch">No account yet? <a href="{{ url_for('auth.register') }}">Register here</a></p>
+      </div>
+
+    {% elif page == 'register' %}
+      <div class="auth-wrap">
+        <span class="eyebrow">Join the village</span>
+        <h2>Create an Account</h2>
+        {% if error %}<div class="flash flash-error">{{ error }}</div>{% endif %}
+        <form method="POST" class="auth-form">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" required>
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" required minlength="6">
+          <label class="checkbox-row"><input type="checkbox" name="is_chv"> I am a Community Health Volunteer (CHV)</label>
+          <button type="submit" class="btn-primary">Create Account</button>
+        </form>
+        <p class="auth-switch">Already have an account? <a href="{{ url_for('auth.login') }}">Log in</a></p>
+      </div>
+
+    {% elif page == 'programs' %}
+      <span class="eyebrow">Guided journeys</span>
+      <h2 style="font-size:1.7rem;">Self-Care Programs</h2>
+      <p style="color:var(--text-muted); max-width:60ch;">Step-by-step programs for conditions you manage over time — check off each step as you go. Log in to save your progress under My Path.</p>
+      <div class="grid" style="margin-top:22px;">
+        {% for program in programs %}
+          <a class="card program-card" href="{{ url_for('programs.detail', slug=program.slug) }}">
+            <span class="tag">{{ program.steps|length }} steps</span>
+            <h3>{{ program.title }}</h3>
+            <p>{{ program.description }}</p>
+            <span class="go">Start this program →</span>
+          </a>
+        {% else %}
+          <p class="empty-state">No programs yet. Run <code>python seed.py</code> to load the sample programs.</p>
+        {% endfor %}
+      </div>
+
+    {% elif page == 'program_detail' %}
+      <a class="back-link" href="{{ url_for('programs.index') }}">← Back to all programs</a>
+      <article class="detail-article">
+        <span class="eyebrow">Guided Program</span>
+        <h2>{{ program.title }}</h2>
+        <p class="lede-text">{{ program.description }}</p>
+        {% if not current_user.is_authenticated %}
+          <div class="advice-box"><p class="advice-text"><a href="{{ url_for('auth.login') }}" style="color:var(--accent)">Log in</a> to save your progress on this program.</p></div>
+        {% endif %}
+        <ul class="step-list">
+          {% for step in program.steps %}
+            <li class="step-item {{ 'done' if step.id in completed_step_ids else '' }}">
+              {% if current_user.is_authenticated %}
+                <form method="POST" action="{{ url_for('programs.toggle_step', slug=program.slug, step_id=step.id) }}">
+                  <button type="submit" class="step-checkbox" aria-label="Mark step complete">{{ '✓' if step.id in completed_step_ids else '' }}</button>
+                </form>
+              {% else %}
+                <span class="step-checkbox">{{ loop.index }}</span>
+              {% endif %}
+              <div class="step-body">
+                <h4>{{ step.title }}</h4>
+                <p>{{ step.description }}</p>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      </article>
+
+    {% elif page == 'my_path' %}
+      <span class="eyebrow">Your personal path</span>
+      <h2 style="font-size:1.7rem;">My Path</h2>
+      {% if my_programs %}
+        <div class="grid" style="margin-top:20px;">
+          {% for entry in my_programs %}
+            <a class="card program-card" href="{{ url_for('programs.detail', slug=entry.program.slug) }}">
+              <h3>{{ entry.program.title }}</h3>
+              <div class="progress-bar"><div class="progress-bar-fill" style="width: {{ (entry.done / entry.total * 100) if entry.total else 0 }}%;"></div></div>
+              <p class="progress-label">{{ entry.done }} of {{ entry.total }} steps complete</p>
+            </a>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="my-path-empty">
+          <p>You haven't started a program yet.</p>
+          <p><a class="btn-primary" href="{{ url_for('programs.index') }}" style="margin-top:10px; display:inline-block;">Browse programs →</a></p>
+        </div>
+      {% endif %}
+
+    {% elif page == 'chv_home' %}
+      <span class="eyebrow">Community Health Volunteer Portal</span>
+      <h2 style="font-size:1.7rem;">CHV Portal</h2>
+      <div class="chv-banner">
+        <h2>Reference material for community health work</h2>
+        <p>Referral guidelines, danger-sign training, and the national referral hospitals to escalate to.</p>
+      </div>
+      <div class="section-title-row"><h2 style="font-size:1.2rem;">Training resources</h2></div>
+      <div class="grid">
+        {% for r in resources %}
+          <a class="card" href="{{ url_for('chv.resource_detail', slug=r.slug) }}">
+            <span class="tag">{{ r.category }}</span>
+            <h3>{{ r.title }}</h3>
+            <p>{{ r.body.split('\n\n')[0] }}</p>
+            <span class="go">Read →</span>
+          </a>
+        {% else %}
+          <p class="empty-state">No CHV resources yet. Run <code>python seed.py</code> to load them.</p>
+        {% endfor %}
+      </div>
+      <div class="section-title-row" style="margin-top:34px;"><h2 style="font-size:1.2rem;">National referral hospitals</h2></div>
+      <ul class="facility-list">
+        {% for f in referral_facilities %}
+          <li class="card facility-card national">
+            <span class="tier">{{ f.level }}</span>
+            <h3>{{ f.name }}</h3>
+            <p>{{ f.ward }}, {{ f.county }} County{% if f.phone %} — {{ f.phone }}{% endif %}</p>
+          </li>
+        {% endfor %}
+      </ul>
+
+    {% elif page == 'chv_resource' %}
+      <a class="back-link" href="{{ url_for('chv.home') }}">← Back to CHV Portal</a>
+      {% set parts = resource.body.split('\n\n') %}
+      <article class="detail-article">
+        <span class="tag">{{ resource.category }}</span>
+        <h2>{{ resource.title }}</h2>
+        <p class="lede-text">{{ parts[0] }}</p>
+        {% for para in parts[1:] %}
+          <div class="detail-section">
+            <ul>
+              {% for line in para.split('\n') %}
+                {% if line.strip() %}<li>{{ line.lstrip('- ').strip() }}</li>{% endif %}
+              {% endfor %}
+            </ul>
+          </div>
+        {% endfor %}
+      </article>
+
+    {% elif page == 'about' %}
+      <span class="eyebrow">Why Afya Kijiji exists</span>
+      <h2 style="font-size:1.8rem; max-width:20ch;">A health village, built for Kenya</h2>
+      <div class="about-story">
+        {% for heading, text in story %}
+          <div class="about-block">
+            <h3>{{ heading }}</h3>
+            <p>{{ text }}</p>
+          </div>
+        {% endfor %}
+      </div>
+      <div class="seek-help" style="margin-top:10px;">
+        <h3>⚠️ This is education, not diagnosis</h3>
+        <p style="color:var(--danger-text); margin:0;">{{ disclaimer }}</p>
+      </div>
+
+    {% endif %}
+
+  </main>
+
+  <div class="village-trim" aria-hidden="true"></div>
+  <footer>
+    <div class="footer-inner">
+      <p class="footer-proverb">"Afya ni mali" — health is wealth.</p>
+      <div class="footer-columns">
+        <div class="footer-col">
+          <h4>Afya Kijiji</h4>
+          <p>Free health education for Kenyan families. Built as a community resource — not a hospital, clinic, or insurer.</p>
+        </div>
+        <div class="footer-col">
+          <h4>Infectious</h4>
+          <a href="{{ url_for('main.topic_detail', slug='malaria') }}">Malaria</a>
+          <a href="{{ url_for('main.topic_detail', slug='tuberculosis') }}">Tuberculosis</a>
+          <a href="{{ url_for('main.topic_detail', slug='typhoid') }}">Typhoid</a>
+        </div>
+        <div class="footer-col">
+          <h4>Long-term</h4>
+          <a href="{{ url_for('main.topic_detail', slug='diabetes') }}">Diabetes</a>
+          <a href="{{ url_for('main.topic_detail', slug='hypertension') }}">High blood pressure</a>
+          <a href="{{ url_for('main.topic_detail', slug='cancer') }}">Cancer</a>
+        </div>
+        <div class="footer-col">
+          <h4>In an emergency</h4>
+          <p class="footer-emergency-line">SHA Lifeline: <a href="tel:922">922</a></p>
+          <p class="footer-emergency-line">Red Cross: <a href="tel:1199">1199</a></p>
+          <a href="{{ url_for('main.emergency') }}">All numbers →</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>Afya Kijiji is still an independent educational resource and is not affiliated with the Ministry of Health or SHA yet. Verify emergency numbers locally as services evolve.</span>
+        <span>© 2026 Afya Kijiji — built for Kenyan families.</span>
+      </div>
+    </div>
+  </footer>
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
